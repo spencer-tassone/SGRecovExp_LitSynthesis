@@ -146,7 +146,7 @@ wq_table <- merge(wq_table, benthic_table, by = 'Location', all = TRUE)
 wq_table <- merge(wq_table, wtemp_table, by = 'Location', all = TRUE)
 
 df <- data.frame(matrix(ncol = 4, nrow = 8))
-colnames(df)[1:4] <- c("Variable","Central","Northern","p-value")
+colnames(df)[1:4] <- c("Variable","Central","Edge","p-value")
 df$Variable <- c("Salinity (g kg<sup> -1</sup>)",
                  "Depth (m)<sup> 1</sup>",
                  "Water Temperature (<sup> o</sup>C )<sup> 2</sup>",
@@ -163,7 +163,7 @@ df$Central <- c(paste(wq_table[1,4], wq_table[1,5], sep = " ± "),
                 paste(wq_table[1,8], wq_table[1,9], sep = " ± "),
                 paste(wq_table[1,10], wq_table[1,11], sep = " ± "),
                 paste(wq_table[1,12], wq_table[1,13], sep = " ± "))
-df$Northern <- c(paste(wq_table[2,4], wq_table[2,5], sep = " ± "),
+df$Edge <- c(paste(wq_table[2,4], wq_table[2,5], sep = " ± "),
                  paste(depth_table[2,2], depth_table[2,3], sep = " ± "),
                  paste(wq_table[2,14], wq_table[2,15], sep = " ± "),
                  paste(wq_table[2,2], wq_table[2,3], sep = " ± "),
@@ -186,6 +186,7 @@ df %>%
   kbl(escape =  F) %>%
   kable_styling(full_width = F, html_font = "Times New Roman", position = 'center') %>%
   kable_classic(html_font = "Cambria") %>%
+  column_spec(1:4, background = 'white') %>%
   footnote(number = c("Mean depth ± mean tidal range for Oct. 14, 2020 – Nov. 10, 2020;",
                       "Water temp. from continuous ≤ 1-hour measurements at 20 cm above sediment surface between Jun. 2020 - Oct. 2022"))
 setwd("D:/School/SeagrassRecovery/Data")
@@ -193,9 +194,10 @@ df %>%
   kbl(escape =  F) %>%
   kable_styling(full_width = F, html_font = "Times New Roman", position = 'center') %>%
   kable_classic(html_font = "Cambria") %>%
+  column_spec(1:4, background = 'white') %>%
   footnote(number = c("Mean depth ± mean tidal range for Oct. 14, 2020 – Nov. 10, 2020;",
                       "Water temp. from continuous ≤ 1-hour measurements at 20 cm above sediment surface between Jun. 2020 - Oct. 2022")) %>%
-  save_kable(file = 'wq_table.html', self_contained = T)
+  save_kable(file = 'Table1.html', self_contained = T)
 
 wtemp_table <- dat_temp_long %>%
   subset(!Site %in% c("2C_SED", "2T_SED", "5C_SED", "5T_SED")) %>%
@@ -482,7 +484,6 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
            ymin = -2.5, ymax = -1, fill = 'white') +
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -2.5, yend = -1)
-
 
 # two-way anova with interaction
 df_turbidity <- dat[,c(1:4,10)]
