@@ -11,7 +11,7 @@ Analysis of seagrass recovery at the [Virginia Coast Reserve (VCR) Long Term Eco
    - This study seeks to address:
      1) is resilience greater (i.e., faster recovery) at sites with greater oceanic exchange (i.e., meadow edge) that have lower thermal stress?
      2) what are the mechanisms of recovery (i.e., clonal or seedling growth)?
-     3) what is the shape of recovery (i.e., linear or non-linear)?
+     3) what is recovery trajectory shape (i.e., linear or non-linear)?
 
 ## Approach:
    - In June 2020 I initiated the world’s largest experimental disturbance of a seagrass ecosystem by removing above-ground seagrass in replicated, circular plots (6 meters in diameter) within the central and northern edge portions of the South Bay seagrass meadow.
