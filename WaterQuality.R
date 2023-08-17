@@ -38,10 +38,12 @@ dat_wlevel_long <- dat_wlevel %>%
   arrange(Site) %>%
   mutate(Location = ifelse(Site %in% c("1C","3T"),"Central","Northern"))
 
+# Determine mean depth and tidal range for central and edge (sometimes refereed to as northern) sites ----
 depth_table <- dat_wlevel_long %>%
   group_by(Location) %>%
   summarise(meandepth_m = round(mean(waterlevel_m),1))
 
+# Determine absolute difference between high and low tides for each site
 tide1C <- dat_wlevel_long[dat_wlevel_long$Site == '1C',]
 tide3T <- dat_wlevel_long[dat_wlevel_long$Site == '3T',]
 tide4C <- dat_wlevel_long[dat_wlevel_long$Site == '4C',]
@@ -109,6 +111,7 @@ colnames(tiderange6T)[1] <- "tiderange_m"
 northern_tiderange <- bind_rows(tiderange4C,tiderange5T,tiderange6T)
 depth_table[2,3] <- round(mean(northern_tiderange$tiderange_m),1)
 
+# summarise water quality ----
 wq_table <- dat %>%
   group_by(Location) %>%
   summarise(MeanDO = round(mean(DO_pct, na.rm = T),1),
@@ -199,6 +202,7 @@ df %>%
                       "Water temp. from continuous ≤ 1-hour measurements at 20 cm above sediment surface between Jun. 2020 - Oct. 2022")) %>%
   save_kable(file = 'Table1.html', self_contained = T)
 
+# Determine how different water temperature is within central and edge sites ---- 
 wtemp_table <- dat_temp_long %>%
   subset(!Site %in% c("2C_SED", "2T_SED", "5C_SED", "5T_SED")) %>%
   group_by(Location, DateTime) %>%
@@ -206,6 +210,7 @@ wtemp_table <- dat_temp_long %>%
             SD_WTemp = round(sd(Temperature_C, na.rm = T),1))
 round((sum(wtemp_table$SD_WTemp <= 0.1, na.rm = T)/NROW(wtemp_table$SD_WTemp))*100) #88% of SD values <= 0.1
 
+# Linear regression of mean central and edge water temperature ----
 test <- wtemp_table[,1:3]
 wtemp_table_wide <- test %>%
   pivot_wider(names_from = "Location", values_from = MeanWTemp) %>%
@@ -220,7 +225,7 @@ ggplot(wtemp_table_wide, aes(x = Central, y = Northern)) +
   scale_y_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
   labs(x = expression(Mean~Central~Water~Temperature~(degree*C)),
-       y = expression(Mean~Northern~Water~Temperature~(degree*C))) +
+       y = expression(Mean~Edge~Water~Temperature~(degree*C))) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            r.accuracy = 0.01,
            p.accuracy = 0.001,
@@ -237,7 +242,7 @@ max(wtemp_table_wide$Diff, na.rm = T) # 4.2 C
 min(wtemp_table_wide$Diff, na.rm = T) # -8.9 C
 round(mean(wtemp_table_wide$Diff, na.rm = T),2) # -0.48 C
 
-# Figure 2: Water temperature difference between central and northern ----
+# Figure 2: Water temperature difference between central and edge ----
 # width = 900 height = 650
 
 lims <- as.POSIXct(strptime(c("2020-05-15 00:00","2022-10-15 23:45"), format = "%Y-%m-%d %H:%M")) 
@@ -250,15 +255,15 @@ ggplot(wtemp_table_wide, aes(x = DateTime, y = Diff)) +
                    expand = expansion(add = c(0,0))) +
   labs(x = "",
        y = expression(Water~Temperature~Difference~(degree*C))) +
-  annotate("rect", fill = "gray93",  
+  annotate("rect", fill = "gray90",  
            xmin = as.POSIXct("2020-06-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2020-07-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2020-08-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2020-09-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2020-10-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2020-11-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
@@ -266,62 +271,62 @@ ggplot(wtemp_table_wide, aes(x = DateTime, y = Diff)) +
            xmin = as.POSIXct("2020-12-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-01-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-02-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-03-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-04-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-05-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-06-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-07-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-08-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-09-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-10-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2021-11-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2021-12-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-01-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2022-02-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-03-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2022-04-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-05-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2022-06-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-07-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2022-08-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-09-01", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
-  annotate("rect", fill = "gray93", 
+  annotate("rect", fill = "gray90", 
            xmin = as.POSIXct("2022-10-01", "%Y-%m-%d"),
            xmax = as.POSIXct("2022-10-15", "%Y-%m-%d"),
            ymin = -Inf, ymax = Inf) +
   annotate('rect', fill = "white", color = "black",
            xmin = as.POSIXct("2020-6-20", "%Y-%m-%d"),
-           xmax = as.POSIXct("2021-04-10", "%Y-%m-%d"),
+           xmax = as.POSIXct("2021-03-20", "%Y-%m-%d"),
            ymin = -7.7, ymax = -6.1) +
   geom_line(color = "gray30") +
   geom_hline(yintercept = 0, linetype = 'solid', size = 0.75, color = 'black') +
   geom_hline(yintercept = mean(wtemp_table_wide$Diff, na.rm = T), linetype = 'longdash', size = 0.75, color = 'red') +
   annotate("text", x = as.POSIXct("2020-07-01", "%Y-%m-%d"), y = -6.5,
-           label = 'Positive = Northern > Central',
+           label = 'Positive = Edge > Central',
            size = 5, fontface = 1, hjust = 0) +
   annotate("text", x = as.POSIXct("2020-07-01", "%Y-%m-%d"), y = -7.25,
-           label = "Negative = Central > Northern",
+           label = "Negative = Central > Edge",
            size = 5, fontface = 1, hjust = 0) +
   theme_bw() +
   theme(panel.grid = element_blank(),
@@ -343,7 +348,8 @@ test2 <- test[test$date > "2022-07-18" &
                 test$date < "2022-08-08",]
 lims <- as.POSIXct(strptime(c("2022-07-19 00:00","2022-08-07 23:45"), format = "%Y-%m-%d %H:%M"))
 
-# max water temperature difference between northern and central sites ----
+# Visualize max water temperature difference between northern (northern = edge) and central sites ----
+# Figure also shows semi diurnal and diurnal pattern for edge sites and only diurnal pattern for central sites 
 # width = 1100 height = 650
 ggplot(test2, aes(x = DateTime, y = Central)) +
   geom_line(color = "black", size = 0.7) +
@@ -356,7 +362,7 @@ ggplot(test2, aes(x = DateTime, y = Central)) +
                    limits = lims,
                    expand = expansion(add = c(0,0))) +
   annotate("text", x = as.POSIXct("2022-07-21 09:00", "%Y-%m-%d"), y = 22,
-           label = 'Northern',
+           label = 'Edge',
            size = 6, fontface = 1, hjust = 0) +
   annotate("text", x = as.POSIXct("2022-07-21 09:00", "%Y-%m-%d"), y = 21,
            label = "Central",
@@ -375,57 +381,8 @@ ggplot(test2, aes(x = DateTime, y = Central)) +
         axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
         axis.text.y = element_text(size = 16, color = 'black'))
 
-# Same as figure above but with air temperature included [air temp data http://vcr.uvadcos.io/ shiny app from vcr website]
-# test2 <- test2 %>%
-#   mutate(hour = hour(DateTime))
-# 
-# setwd("D:/School/SeagrassRecovery/Data")
-# air_temp <- read.csv('july2022_airtemp.csv')
-# air_temp$Index <- as.POSIXct(air_temp$Index, tz = "America/Jamaica", "%m/%d/%Y %H:%M")
-# 
-# air_temp <- air_temp %>%
-#   mutate(date = date(Index),
-#          hour = hour(Index))
-# air_temp <- air_temp[,c(1,3)]
-# 
-# test3 <- merge(test2, air_temp, by = c('date','hour'))
-# View(test3)
-# 
-# lims <- as.POSIXct(strptime(c("2022-07-19 00:00","2022-08-07 23:45"), format = "%Y-%m-%d %H:%M"))
-# # max water temperature difference between northern and central sites
-# # width = 1100 height = 650
-# ggplot(test3, aes(x = DateTime, y = Central)) +
-#   geom_line(color = "black", size = 0.7) +
-#   geom_line(aes(x = DateTime, y = Northern), color = 'red', size = 0.7) +
-#   geom_line(aes(x = DateTime, y = t_celcius), color = 'green3', size = 0.7) +
-#   labs(x = '2022',
-#        y = expression(Water~Temperature~(degree*C))) +
-#   scale_y_continuous(breaks = seq(21,33,2)) +
-#   scale_x_datetime(date_labels = "%b %d",
-#                    date_breaks = "1 day",
-#                    limits = lims,
-#                    expand = expansion(add = c(0,0))) +
-#   annotate("text", x = as.POSIXct("2022-07-21 09:00", "%Y-%m-%d"), y = 22,
-#            label = 'Northern',
-#            size = 6, fontface = 1, hjust = 0) +
-#   annotate("text", x = as.POSIXct("2022-07-21 09:00", "%Y-%m-%d"), y = 21,
-#            label = "Central",
-#            size = 6, fontface = 1, hjust = 0) +
-#   annotate("segment", color = "red", size = 1,
-#            x = as.POSIXct("2022-07-20", "%Y-%m-%d"),
-#            xend = as.POSIXct("2022-07-21", "%Y-%m-%d"),
-#            y = 22, yend = 22) +
-#   annotate("segment", color = "black", size = 1,
-#            x = as.POSIXct("2022-07-20", "%Y-%m-%d"),
-#            xend = as.POSIXct("2022-07-21", "%Y-%m-%d"),
-#            y = 21, yend = 21) +
-#   theme_bw() +
-#   theme(panel.grid = element_blank(),
-#         text = element_text(size = 16, color = "black"),
-#         axis.text.x = element_text(size = 16, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-#         axis.text.y = element_text(size = 16, color = 'black'))
-
-# Turbidity: control and treatment for each location ----
+# Everything below here was exploratory analysis of the water quality data ----
+## Turbidity: control and treatment for each location ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -456,7 +413,7 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -5, yend = -2)
 
-# Turbidity: between locations ----
+## Turbidity: between locations ----
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
                                                            'Apr 2022','May 2022','Jun 2022','Jul 2022','Aug 2022')),
@@ -495,7 +452,7 @@ plot(aov_turbidity)
 emm_turbidity <- emmeans(aov_turbidity, pairwise ~ Location | Date)
 emm_turbidity$contrasts
 
-##### TSS: control and treatment for each location ----
+## TSS: control and treatment for each location ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -526,7 +483,7 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -6, yend = -3)
 
-# TSS: between locations ----
+## TSS: between locations ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -566,7 +523,7 @@ plot(aov_tss)
 emm_tss <- emmeans(aov_tss, pairwise ~ Location | Date) 
 emm_tss$contrasts
 
-# Dissolved Oxygen: control and treatment for each location ----
+## Dissolved Oxygen: control and treatment for each location ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -597,7 +554,7 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -1.2, yend = -0.5)
 
-# Dissolved Oxygen: between locations ----
+## Dissolved Oxygen: between locations ----
  
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -637,7 +594,7 @@ plot(aov_do)
 emm_do <- emmeans(aov_do, pairwise ~ Location | Date) 
 emm_do$contrasts
 
-# Salinity: control and treatment for each location ----
+## Salinity: control and treatment for each location ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -668,7 +625,7 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -2.5, yend = -1)
 
-# Salinity: between locations ----
+## Salinity: between locations ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -708,7 +665,7 @@ plot(aov_salinity)
 emm_salinity <- emmeans(aov_salinity, pairwise ~ Location | Date) 
 emm_salinity$contrasts
 
-# Pelagic CHLa: control and treatment for each location ----
+## Pelagic CHLa: control and treatment for each location ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -739,7 +696,7 @@ ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020'
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -1.5, yend = -0.5)
 
-# Pelagic CHLa: between locations ----
+## Pelagic CHLa: between locations ----
 
 ggplot(dat, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -779,7 +736,7 @@ plot(aov_pelagic)
 emm_pelagic <- emmeans(aov_pelagic, pairwise ~ Location | Date) 
 emm_pelagic$contrasts
 
-# Benthic CHLa: control and treatment for each location ----
+## Benthic CHLa: control and treatment for each location ----
 
 ggplot(dat_benthic, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
@@ -810,7 +767,7 @@ ggplot(dat_benthic, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','A
   annotate('segment', x = c(4.4, 4.6, 10.4, 10.6),
            xend = c(4.4, 4.6, 10.4, 10.6), y = -9, yend = -3)
 
-# Benthic CHLa: between locations ----
+## Benthic CHLa: between locations ----
 
 ggplot(dat_benthic, aes(x = factor(format(Date, "%b %Y"),level = c('Jul 2020','Aug 2020','Sep 2020','Oct 2020',
                                                            'May 2021','Jun 2021','Jul 2021','Aug 2021','Sep 2021','Oct 2021',
