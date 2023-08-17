@@ -1,5 +1,5 @@
-# SGResilExp
-Analysis of seagrass recovery for the Seagrass Resilience Experiment at the [Virginia Coast Reserve (VCR) Long Term Ecological Research (LTER) center](https://www.vcrlter.virginia.edu/home2/). This work contributes a new experimental manipulation that compliments the ongoing long-term seagrass monitoring and restoration efforts within the VCR. The experiment also directly contributes to questions developed in the VCR-VII proposal related to state change and resilience.
+# Seagrass Recovery Experiment
+Analysis of seagrass recovery at the [Virginia Coast Reserve (VCR) Long Term Ecological Research (LTER) center](https://www.vcrlter.virginia.edu/home2/). This work contributes a new experimental manipulation that compliments the ongoing long-term seagrass monitoring and restoration efforts within the VCR. The experiment also directly contributes to questions developed in the VCR-VII proposal related to state change and resilience.
 
 ## Motivation:
    - Climate change is impacting the VCR through sea-level rise, increased storms, and warming water temperatures. Heatwaves are a component of the warming phenomena and have been shown to negatively impact seagrass within the VCR. My research at the VCR investigates seagrass resilience (i.e., recovery) following disturbance.
