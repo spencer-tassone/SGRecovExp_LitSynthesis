@@ -17,8 +17,8 @@ Analysis of seagrass recovery at the [Virginia Coast Reserve (VCR) Long Term Eco
    - In June 2020 I initiated the world’s largest experimental disturbance of a seagrass ecosystem by removing above-ground seagrass in replicated, circular plots (6 meters in diameter) within the central and northern edge portions of the South Bay seagrass meadow.
    - Broadly, the scale of this experimental manipulation is >2x larger in area than the next largest seagrass removal experiment. This broader areal scale of experimentation is significant as patterns and processes are often scale dependent; what is observed and observable at one scale can change as scale expands or contracts. The majority of prior experimental manipulations have occurred in ≤ 0.25 m<sup>2</sup> plots that have likely overestimated the importance of lateral clonal growth during recovery as well as making it difficult to discern recovery patterns (e.g., linear vs. non-linear).
 
-# SGRecoveryLitSynthesis
-Quantitative literature synthesis of disturbance and recovery dynamics in seagrass ecosystems
+# Literature Synthesis: Seagrass Disturbance-Recovery
+A quantitative literature synthesis of disturbance and recovery dynamics in seagrass ecosystems
 
 ## Background
 
@@ -26,7 +26,7 @@ Prior experimental and observational studies measured the aboveground recovery r
 
 ## Objectives
 
-I am systematically reviewing and synthesizing the available primary literature on seagrass ecosystem disturbance and recovery to:
-1) determine the primary drivers of disturbance within seagrass ecosystems
-2) identify drivers and patterns of recovery within seagrass ecosystems
-3) provide a general, first-order quantitative model of seagrass recovery rates for ecosystem management.
+Systematically review and synthesize the available english language primary literature on seagrass ecosystem disturbance and recovery to:
+1) summarise spatial scales of experimental and observational research on seagrass disturbance and recovery
+2) quantify seagrass recovery rates
+3) identify factors related to recovery to provide greater context for the experiment described above and to assess possible generalities about seagrass recovery
