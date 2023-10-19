@@ -1,12 +1,12 @@
-library(ggplot2)
+library(tidyverse)
 library(ggspatial)
 library(sf)
 library(rnaturalearth)
-library(tidyr)
-library(dplyr)
 library(rstatix)
 library(ggsignif)
 library(ggpmisc)
+library(patchwork)
+library(ggridges)
 
 rm(list = ls())
 dev.off()
@@ -14,6 +14,7 @@ dev.off()
 setwd("D:/School/SeagrassRecovery/LitSurvey")
 dat <- read.csv("LitSurvey_Data.csv")
 
+# Map sites
 lat_long <- dat %>%
   group_by(Order,Country,StudyType) %>%
   summarise(Lat = mean(Lat),
@@ -28,8 +29,16 @@ lat_long <- lat_long %>%
 
 lat_long$col <- ifelse(lat_long$StudyType == 'Experiment',"#FCDB2D",
                        ifelse(lat_long$StudyType == 'Observation',"dodgerblue2","darkorchid2"))
-lat_long[c(15,41),5] <- c(-123.5,-125.5) # need to jitter these points due to overlap with another study in similar area
-lat_long[c(1,18,30,51,59),4] <- c(35.5,33.5,36,36,33.5) # need to jitter these points due to overlap with another study in similar area
+
+# need to jitter these points due to overlap with another study in similar area
+lat_long <- lat_long %>%
+  mutate(Long = ifelse(Order == 19, -123.5, Long)) %>%
+  mutate(Long = ifelse(Order == 51, -125.5, Long)) %>%
+  mutate(Lat = ifelse(Order == 2, 35.5, Lat)) %>%
+  mutate(Lat = ifelse(Order == 23, 35.5, Lat)) %>%
+  mutate(Lat = ifelse(Order == 38, 36, Lat)) %>%
+  mutate(Lat = ifelse(Order == 66, 36, Lat)) %>%
+  mutate(Lat = ifelse(Order == 76, 35.5, Lat))
 
 world <- rnaturalearth::ne_countries(scale = "medium",
                                      returnclass = "sf")
@@ -63,7 +72,7 @@ map <- ggplot() +
           fill = sf_all$col,
           shape = 21,
           size = 3.2,
-          alpha = 1) +
+          alpha = 0.8) +
   coord_sf(ylim = c(-90, 90),
            xlim = c(-180, 180),
            expand = FALSE) +
@@ -86,11 +95,12 @@ dat2 <- dat2 %>%
   group_by(Order) %>%
   mutate(StudyType = if(all(c("Experiment", "Observation") %in% StudyType)) 
     "Both" else StudyType) %>% 
-  ungroup %>% 
+  ungroup() %>% 
   distinct()
 
-dat2 <- dat2[c(1:14,16:NROW(dat2)),] # need to remove a duplicate
-dat2[44,4] <- 1 # this site had one experiment & one observation = one 'both'
+dat2 <- dat2 %>%
+  filter(!row_number() %in% 15) %>%  # need to remove a duplicate
+  mutate(count = ifelse(row_number() == 44, 1, count))  # this site had one experiment & one observation = one 'both'
 
 dat2 <- dat2 %>%
   group_by(Country, StudyType) %>%
@@ -118,52 +128,13 @@ freq_plot <- ggplot(data = dat2, aes(x = factor(Country, levels = c('USA','Austr
         panel.background = element_blank(),
         plot.margin = grid::unit(c(0,0,2,2), "mm"))
 
-setwd("D:/School/SeagrassRecovery/LitSurvey/Figures")
+setwd("D:/School/SeagrassRecovery/LitSurvey/Figures/ForManuscript")
 # Figure 8: Map ----
 # width = 1200 height = 900
 map + annotation_custom(ggplotGrob(freq_plot),
                         xmin = -180, xmax = -55,
                         ymin = -90, ymax = 5)
-
-library(wordcloud)
-library(wordcloud2)
-library(tm)
-
-text <- dat[!duplicated(dat$Order),]
-text <- text[,2]
-docs <- Corpus(VectorSource(text))
-
-docs <- docs %>%
-  tm_map(removePunctuation)
-
-docs <- docs %>%
-  tm_map(removePunctuation) %>%
-  tm_map(stripWhitespace)
-
-# docs <- tm_map(docs, content_transformer(tolower))
-# docs <- tm_map(docs, removeWords, stopwords("english"))
-
-dtm <- TermDocumentMatrix(docs)
-matrix <- as.matrix(dtm)
-words <- sort(rowSums(matrix), decreasing = TRUE)
-df <- data.frame(word = names(words), freq=words)
-
-set.seed(1234)
-
-dff <- df[df$freq >= 2,]
-
-# wordcloud ----
-wordcloud(words = df$word, freq = df$freq, min.freq = 2,
-          max.words = 200, random.order = FALSE, rot.per = 0,
-          colors = brewer.pal(5, "Dark2"))
-
-wordcloud2(data = dff, backgroundColor = "black",
-           shape = "diamond", color=rep_len(c("#253494","#2c7fb8","#41b6c4", "#a1dab4", "#ffffcc"), nrow(df)),
-           rotateRatio = 0, minSize = 2, shuffle = TRUE,
-           fontWeight = 'normal')
-
-###########
-
+# Analyses
 dat$Region <- ifelse(dat$Lat < 23.5 & dat$Lat > -23.5, "Tropics",
                      ifelse(dat$Lat > 23.5 & dat$Lat < 35, "Subtropics",
                             ifelse(dat$Lat < -23.5 & dat$Lat > -35, "Subtropics",
@@ -236,44 +207,11 @@ genus_fig <- genus %>%
         strip.background = element_rect(fill = "white"),
         plot.margin=grid::unit(c(0,0,0,0), "mm"))
 
-# SI Figure 2: Genus species ---- 
+# Figure 9: Genus species ---- 
 # width = 1000 height = 800
 species_fig + annotation_custom(ggplotGrob(genus_fig),
                                 xmin = 3.1, xmax = 20.5,
                                 ymin = 0.01, ymax = 23)
-
-dat %>%
-  group_by(Region) %>%
-  drop_na(Recovery_months) %>%
-  summarise(n = n(),
-            median = round(median(Recovery_months, na.rm = T)))
-
-num_region <- c("Tropics (n = 22)", "Subtropics (n = 36)", "Temperate (n = 42)")
-my_comparisons <- list(c("Tropics","Temperate"),
-                       c("Subtropics","Temperate"))
-
-# Figure 9: Recovery Time as a function of region ----
-# width = 800 height = 600
-dat %>%
-  mutate(Region = factor(Region, levels = c("Tropics","Subtropics","Temperate"))) %>%
-  ggplot(aes(x = Region, y = Recovery_months)) +
-  geom_signif(textsize = 4,
-              y_position = log10(c(2000, 1400)),
-              comparisons = my_comparisons,
-              map_signif_level = function(x) paste("p =", scales::pvalue(x))) +
-  scale_y_log10() +
-  scale_x_discrete(labels = num_region) +
-  geom_boxplot(outlier.colour="white", outlier.fill = "white", outlier.shape = 1, outlier.size = 0) +
-  geom_jitter(shape=1, position=position_jitter(0.2), color = "black", fill = "white", size = 2) +
-  labs(x = "Latitudinal Regions",
-       y = "Recovery Time (months)") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 16, color = "black"),
-        axis.text.y = element_text(size = 16, color = "black"),
-        axis.title = element_text(size = 16, color = "black"),
-        axis.title.x = element_text(vjust = -0.5),
-        panel.grid = element_blank(),
-        panel.background = element_blank())
 
 dat %>%
   group_by(Region) %>%
@@ -282,98 +220,20 @@ dat %>%
                                        MIN = min(Recovery_months, na.rm = T),
                                        MAX = max(Recovery_months, na.rm = T))
 
-trop <- na.omit(dat[dat$Region == "Tropics",c(8,29)])
-subtrop <- na.omit(dat[dat$Region == "Subtropics",c(8,29)])
-temp <- na.omit(dat[dat$Region == "Temperate",c(8,29)])
-zone <- rbind(trop,subtrop)
-zone <- rbind(zone,temp)
+dat_exp <- dat %>%
+  filter(StudyType == 'Experiment')
 
-# ECDF ----
-# width = 800 height = 600
-zone %>%
-  mutate(Region = forcats::fct_relevel(Region, c('Tropics','Subtropics','Temperate'))) %>%
-  group_by(Region) %>%
-  ggplot(aes(Recovery_months, color = Region)) +
-  stat_ecdf(geom = 'line', pad = F, size = 1) +
-  scale_y_continuous(breaks = seq(0,1,0.1),
-                     limits = c(0,1)) +
-  scale_x_continuous(breaks = seq(0,1200,100),
-                     limits = c(0,1200)) +
-  labs(x = "Recovery Length (months)",
-       y = "Empirical Cumulative Distribution") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 16, color = "black"),
-        axis.text.y = element_text(size = 16, color = "black"),
-        axis.title = element_text(size = 16, color = "black"),
-        axis.title.x = element_text(vjust = -0.5),
-        legend.title = element_text(size = 16),
-        legend.text = element_text(size = 16),
-        legend.position = c(0.85,0.15),
-        legend.background = element_blank(),
-        legend.key = element_blank(),
-        panel.grid = element_blank(),
-        panel.background = element_blank())
+dat_obs <- dat %>%
+  filter(StudyType == 'Observation') %>%
+  mutate(DisturbanceArea_km2 = DisturbanceArea_m2/1000000)
 
-zone %>%
-  mutate(Region = forcats::fct_relevel(Region, c('Tropics','Subtropics','Temperate'))) %>%
-  group_by(Region) %>%
-  ggplot(aes(log10(Recovery_months), color = Region)) +
-  stat_ecdf(geom = 'line', pad = F, size = 1) +
-  scale_y_continuous(breaks = seq(0,1,0.1),
-                     limits = c(0,1)) +
-  labs(x = expression(log[10]~"[Recovery Length (months)]"),
-       y = "Empirical Cumulative Distribution") +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 16, color = "black"),
-        axis.text.y = element_text(size = 16, color = "black"),
-        axis.title = element_text(size = 16, color = "black"),
-        axis.title.x = element_text(vjust = -0.5),
-        legend.title = element_text(size = 16),
-        legend.text = element_text(size = 16),
-        legend.position = c(0.85,0.15),
-        legend.background = element_blank(),
-        legend.key = element_blank(),
-        panel.grid = element_blank(),
-        panel.background = element_blank())
+dat_mono <- dat %>%
+  filter(Mixed_Mono == 'Mono')
 
-# quantile(test$Recovery_months, probs = seq(.1,.9, by = .1), na.rm = T)
-# f <- ecdf(test$Recovery_months)
-# round(ecdf(test$Recovery_months)(24),3)
-# mean(test$Recovery_months < 24, na.rm = T)
-# mean(test$Recovery_months < 124, na.rm = T)
-
-dat2 %>%
-  summarise(OrderMagnitudeDiff = round(log10(max(Recovery_months, na.rm = T)-log10(min(Recovery_months, na.rm = T)))))
-
-# dat_100 <- dat[dat$Perc_RecoveryDuringStudy >= 95,]
-# dat_100 <- dat_100[!is.na(dat_100$Perc_RecoveryDuringStudy),]
-# 
-# dat_100 %>%
-#   mutate(Region = factor(Region, levels = c("Tropics","Subtropics","Temperate"))) %>%
-#   ggplot(aes(x = Region, y = Recovery_months)) +
-#   scale_y_log10() +
-#   geom_boxplot(outlier.colour="white", outlier.fill = "white", outlier.shape = 1, outlier.size = 0) +
-#   geom_jitter(shape=1, position=position_jitter(0.2), color = "black", fill = "white", size = 2) +
-#   labs(x = "Latitudinal Regions",
-#        y = "Recovery Time (months)") +
-#   theme_bw() +
-#   theme(axis.text.x = element_text(size = 16, color = "black"),
-#         axis.text.y = element_text(size = 16, color = "black"),
-#         axis.title = element_text(size = 16, color = "black"),
-#         axis.title.x = element_text(vjust = -0.5),
-#         panel.grid = element_blank(),
-#         panel.background = element_blank())
-# 
-# dat_100 %>% group_by(Region) %>% summarise(Median = median(Recovery_months, na.rm = T))
-
-dat_exp <- dat2[dat2$StudyType == "Experiment",]
-dat_obs <- dat2[dat2$StudyType == "Observation",]
-dat_obs$DisturbanceArea_km2 <- dat_obs$DisturbanceArea_m2/1000000
-dat_mono <- dat2[dat2$Mixed_Mono == "Mono",]
 dat_mono_table <- as.data.frame(table(unlist(strsplit(dat_mono$Species,', '))))
 dat_species_table <- as.data.frame(table(unlist(strsplit(dat$Species,', '))))
-dat_nonlin <- dat2[dat2$Recovery_Trajectory == "Nonlinear",]
-dat_lin <- dat2[dat2$Recovery_Trajectory == "Linear",]
+
+# SI Figure 6: Disturbance area as a function of experiment or observation ----
 
 p1 <- ggplot(data = dat_exp, aes(x = StudyType, y = DisturbanceArea_m2)) +
   geom_boxplot(outlier.color = "black") +
@@ -401,9 +261,6 @@ p2 <- ggplot(data = dat_obs, aes(x = StudyType, y = DisturbanceArea_km2)) +
         panel.grid = element_blank(),
         panel.background = element_blank())
 
-library(patchwork)
-
-# SI Figure 6: Disturbance area as a function of experiment or observation ----
 ### width = 800 height = 600
 p1 + p2 + plot_layout(ncol = 2)
   
@@ -411,14 +268,33 @@ current_lrg_disArea = round(max(dat_exp$DisturbanceArea_m2),1)
 our_study_distArea = 3.14*(3*3)
 round((our_study_distArea/current_lrg_disArea),2)
 
-table(dat2$StudyType)
-
-adj_studyType <- dat2
-adj_studyType[adj_studyType == "Experiment"] <- "Experiment (n = 27)"
-adj_studyType[adj_studyType == "Observation"] <- "Observation (n = 33)"
-
-# SI Figure 3: Disturbance shape ----
+# SI Figure 2: Disturbance type ----
 ### width = 800 height = 600
+dat2 %>%
+  arrange(-desc(DistType)) %>%
+  mutate(DistType = factor(DistType, levels = c("Physical","Chemical","Light",
+                                                "NA","Climate","Disease","Natural"))) %>%
+  ggplot(aes(DistType)) +
+  geom_bar(color = "black",
+           fill = "gray75") +
+  labs(x = "Disturbance Type",
+       y = "Number of Studies") +
+  scale_y_continuous(breaks = seq(0,35,5), limits = c(0,35)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 16, color = "black", angle = 30, vjust = 1, hjust = 1),
+        axis.text.y = element_text(size = 16, color = "black"),
+        axis.title = element_text(size = 16, color = "black"),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        strip.text.x = element_text(size = 16, color = "black"))
+
+# SI Figure 4: Disturbance shape ----
+### width = 800 height = 600
+
+table(dat2$StudyType)
+adj_studyType <- dat2 %>%
+  mutate(StudyType = ifelse(StudyType == 'Experiment', 'Experiment (n = 27)', 'Observation (n = 33)'))
+
 adj_studyType %>%
   mutate(DistShape = factor(DistShape, levels = c("Irregular","Square","Circle","Rectagle","Ellipse","NA"))) %>%
 ggplot(aes(DistShape)) +
@@ -437,34 +313,14 @@ ggplot(aes(DistShape)) +
         strip.background = element_rect(fill = "white")) +
   facet_wrap(~StudyType)
 
-# SI Figure 1: Disturbance type ----
-### width = 800 height = 600
-dat2 %>%
-  arrange(-desc(DistType)) %>%
-  mutate(DistType = factor(DistType, levels = c("Physical","Chemical","Light",
-                                                "NA","Climate","Disease","Natural"))) %>%
-ggplot(aes(DistType)) +
-  geom_bar(color = "black",
-           fill = "gray75") +
-  labs(x = "Disturbance Type",
-       y = "Number of Studies") +
-  scale_y_continuous(breaks = seq(0,35,5), limits = c(0,35)) +
-  theme_bw() +
-  theme(axis.text.x = element_text(size = 16, color = "black", angle = 30, vjust = 1, hjust = 1),
-        axis.text.y = element_text(size = 16, color = "black"),
-        axis.title = element_text(size = 16, color = "black"),
-        panel.grid = element_blank(),
-        panel.background = element_blank(),
-        strip.text.x = element_text(size = 16, color = "black"))
-
-# Recovery shape ----
+# SI Figure 3: Recovery trajectory shape----
 ### width = 800 height = 600
 ggplot(data = dat2, aes(Recovery_Trajectory)) +
   geom_bar(color = "black",
            fill = "gray75") +
   scale_y_continuous(breaks = seq(0,35,5),
                      limits = c(0,35)) +
-  labs(x = "Recovery Shape",
+  labs(x = "Recovery Trajectory",
        y = "Number of Studies") +
   theme_bw() +
   theme(axis.text.x = element_text(size = 16, color = "black"),
@@ -473,9 +329,9 @@ ggplot(data = dat2, aes(Recovery_Trajectory)) +
         panel.grid = element_blank(),
         panel.background = element_blank())
 
-# Figure 12: Recovery mechanism ----
+# SI Figure 8: Recovery mechanism ----
 ### width = 800 height = 600
-dat2 %>%
+adj_studyType %>%
   mutate(Recovery_Mechanism = factor(Recovery_Mechanism, levels = c("Clonal","Seed","Both"))) %>%
 ggplot(aes(Recovery_Mechanism)) +
   geom_bar(color = "black",
@@ -494,7 +350,7 @@ ggplot(aes(Recovery_Mechanism)) +
 
 # SI Figure 5: Species included in experimental and observations studies ----
 ### width = 800 height = 600
-ggplot(data = dat2, aes(NumSpecies)) +
+ggplot(data = adj_studyType, aes(NumSpecies)) +
   geom_bar(color = "black",
            fill = "gray75") +
   scale_y_continuous(breaks = seq(0,20,2), limits = c(0,20)) +
@@ -511,44 +367,26 @@ ggplot(data = dat2, aes(NumSpecies)) +
         strip.background = element_rect(fill = "white")) +
   facet_wrap(~StudyType)
 
-dat_100 <- dat[dat$Perc_RecoveryDuringStudy >= 90,]
-dat_100 <- dat_100[!is.na(dat_100$Perc_RecoveryDuringStudy),]
-dat_100$Recovery_months <- as.numeric(dat_100$Recovery_months)
-dat_100$DisturbanceArea_m2 <- as.numeric(dat_100$DisturbanceArea_m2)
-dat_100$MeadowSizeStart_m2 <- as.numeric(dat_100$MeadowSizeStart_m2)
-dat_100$MeadowSizeEnd_m2 <- as.numeric(dat_100$MeadowSizeEnd_m2)
-dat_100$Perimeter <- as.numeric(dat_100$DisturbancePerimeter_m)
-dat_100$PerimAreaRatio <- dat_100$Perimeter/dat_100$DisturbanceArea_m2
-dat_100_small <- dat_100[dat_100$DistArea_m2 <= 100,]
-dat_100_small <- dat_100_small[!is.na(dat_100_small$Recov.),]
-
-dat2$StudyDuration_years <- dat2$StudyDuration_months/12
-dat$StudyDuration_years <- dat$StudyDuration_months/12
-dat_exp <- dat[dat$StudyType == "Experiment",]
-dat_obs <- dat[dat$StudyType == "Observation",]
-
 round(mean(dat_exp$StudyDuration_months, na.rm = T))
 round(mean(dat_obs$StudyDuration_months, na.rm = T))
 
-dat$DisturbanceArea_m2 <- as.numeric(dat$DisturbanceArea_m2)
-dat$Recovery_months <- as.numeric(dat$Recovery_months)
-dat$DisturbancePerimeter_m <- as.numeric(dat$DisturbancePerimeter_m)
-dat$PerimRatio <- dat$DisturbancePerimeter_m/dat$DisturbanceArea_m2
-dat$Perc_AboveGroundReduction <- as.numeric(dat$Perc_AboveGroundReduction)
-dat$MeadowSizeStart_m2 <- as.numeric(dat$MeadowSizeStart_m2)
-dat$MeadowDistRatio <- dat$DisturbanceArea_m2/dat$MeadowSizeStart_m2
-dat$Perc_MeadowDist <- dat$MeadowDistRatio*100
-dat$abs_lat <- abs(dat$Lat)
+dat <- dat %>%
+  mutate(PerimAreaRatio = DisturbancePerimeter_m/DisturbanceArea_m2,
+         MeadowDistRatio = DisturbanceArea_m2/MeadowSizeStart_m2,
+         Perc_MeadowDist <- MeadowDistRatio*100,
+         abs_lat = abs(Lat))
 
+# Figure 10: Recovery time as a function of disturbance area ----
+# width = 800 height = 600
 library(ggpubr)
 
 cols <- c("Tropics" = "#000000", "Subtropics" = "#969696", "Temperate" = "#ffffff")
 
 library(scales)
 
-test <- dat[c(3,23,29:30)]
-test <- test %>%
-  filter(Perc_RecoveryDuringStudy > 90) %>%
+test <- dat %>%
+  select(StudyType, DisturbanceArea_m2, Recovery_months, Perc_RecoveryDuringStudy) %>%
+  filter(Perc_RecoveryDuringStudy >= 90) %>%
   drop_na(DisturbanceArea_m2) %>%
   mutate(log_x = log10(DisturbanceArea_m2),
          log_y = log10(Recovery_months))
@@ -556,9 +394,6 @@ lm_mod <- lm(log_y ~ log_x, data = test)
 poly_mod <- lm(log10(Recovery_months) ~ poly(log10(DisturbanceArea_m2),2), data = test)
 summary(lm_mod)
 summary(poly_mod)
-
-# Figure 11: Recovery time as a function of disturbance area ----
-# width = 800 height = 600
 
 cor.test(test$log_x,test$log_y, method = 'pearson')
 
@@ -596,27 +431,27 @@ aa %>%
         legend.position = c(0.15,0.88),
         panel.grid = element_blank(),
         panel.background = element_blank()) +
-  stat_cor(aes(label = paste(..r.label.., ..p.label.., sep = "~`,`~")),
+  stat_cor(aes(label = paste(after_stat(r.label), after_stat(p.label), sep = "~`,`~")),
            label.x = 3, label.y = 0, size = 6,
            r.accuracy = 0.01,
            p.accuracy = 0.001)
 
-test2 <- test
-test2 <- test2[c(1:49,51:61),]
+summary(lm(aa$log_y~poly(aa$log_x,2)))
 
-summary(lm(test$log_y~poly(test$log_x,2)))
-summary(lm(test2$log_y~poly(test2$log_x,2)))
+formula <- aa$log_y~poly(aa$log_x,2)
 
-formula <- test$log_y~poly(test$log_x,2)
-
-test %>%
+aa %>%
   ggplot(aes(x = log_x, y = log_y)) +
-  geom_point(color = "black", size = 4, shape = 21, alpha = 0.7, aes(fill=factor(StudyType))) +
+  geom_point(aes(fill=factor(StudyType),
+                 shape = factor(StudyType)),
+             color = "black", size = 4, alpha = 0.7) +
   scale_x_continuous(breaks = seq(-2,6,1),
                      limits = c(-2,6)) +
   scale_y_continuous(breaks = seq(-0.5,2.5,0.5),
                      limits = c(-0.5,2.5)) +
-  scale_fill_manual(values = c('#FCDB2D','dodgerblue2'),
+  scale_shape_manual(values = c(21, 21, 24),
+                     name = "Study Type") +
+  scale_fill_manual(values = c('#FCDB2D','dodgerblue2','#FCDB2D'),
                     name = "Study Type") +
   labs(x = expression(log[10]~"[Disturbance Area"~ (m^-2) ~"]"),
        y = expression(log[10]~"[Recovery Time (months)]")) +
@@ -643,52 +478,10 @@ test %>%
                   aes(label = paste("p-value = ", signif(..p.value.., digits = 3), sep = "")),
                   label.x = 3, label.y = 0, size = 6)
 
-## linear
-# test %>%
-#   ggplot(aes(x = log_x, y = log_y)) +
-#   geom_point(size = 2) +
-#   geom_point(color = "black", size = 2, shape = 1) +
-#   scale_x_continuous(breaks = seq(-2,6,1),
-#                      limits = c(-2,6)) +
-#   scale_y_continuous(breaks = seq(-0.5,2.5,0.5),
-#                      limits = c(-0.5,2.5)) +
-#   labs(x = expression(log[10]~"[Disturbance Area"~ (m^-2) ~"]"),
-#        y = expression(log[10]~"[Recovery Time (months)]")) +
-#   stat_smooth(method = 'lm',
-#               se = F,
-#               color = 'red') +
-#   theme_bw() +
-#   theme(axis.text.x = element_text(size = 16, color = "black"),
-#         axis.text.y = element_text(size = 16, color = "black"),
-#         axis.title = element_text(size = 16, color = "black"),
-#         panel.grid = element_blank(),
-#         panel.background = element_blank()) +
-#   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-#            label.x = 3, label.y = 0, size = 6,
-#            r.accuracy = 0.01,
-#            p.accuracy = 0.001) +
-#   stat_regline_equation(formula = test$log_y ~ test$log_x,
-#                         aes(label = ..eq.label..),
-#                         label.x = 3, label.y = 0.25, size = 6)
-
-test2 <- dat[c(29:30,37)]
-
-test2 <- test2 %>%
-  filter(Perc_RecoveryDuringStudy > 90) %>%
-  drop_na(Recovery_months) %>%
-  mutate(log_y = log10(Recovery_months))
-
-lm_mod2 <- lm(test2$log_y ~ test2$PerimRatio)
-summary(lm_mod2)
-# see link below for interpretation of log-transformed linear models
-# https://data.library.virginia.edu/interpreting-log-transformations-in-a-linear-model/
-(exp(coef(lm_mod2)["test2$PerimRatio"]) - 1) * 100 # for every 1 unit increase in  7.6%
-
 # Recovery time as a function of perimeter:area ratio ----
 # width = 800 height = 600
-
 test2 %>%
-  ggplot(aes(x = PerimRatio, y = log_y)) +
+  ggplot(aes(x = PerimAreaRatio, y = log_y)) +
   geom_point(size = 3) +
   scale_x_continuous(breaks = seq(0,40,5),
                      limits = c(0,42)) +
@@ -705,74 +498,41 @@ test2 %>%
         axis.title = element_text(size = 16, color = "black"),
         panel.grid = element_blank(),
         panel.background = element_blank()) +
-  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+  stat_cor(aes(label = paste(after_stat(r.label), after_stat(p.label), sep = "~`,`~")),
            label.x = 20, label.y = 1.7, size = 6,
            r.accuracy = 0.01,
            p.accuracy = 0.001) +
-  stat_regline_equation(formula = test2$log_y ~ test2$PerimRatio,
+  stat_regline_equation(formula = test2$log_y ~ test2$PerimAreaRatio,
                         aes(label = ..eq.label..),
                         label.x = 20, label.y = 2, size = 6)
 
-# Figure 10: Recovery time as a function of region and species ----
-### width = 800 height = 600
-dat %>%
+# SI Figure 7: Recovery rate normalized to disturbance area by region ----
+# width = 800 height = 600
+zz <- dat %>%
+  filter(Perc_RecoveryDuringStudy >= 90,
+         Perc_AboveGroundReduction >= 80) %>%
+  mutate(recov_area = DisturbanceArea_m2/Recovery_months,
+         recov_area_log = log10(recov_area)) %>%
+  drop_na(recov_area)
+
+num_region2 <- c("Tropics (n = 12)", "Subtropics (n = 17)", "Temperate (n = 20)")
+my_comparisons <- list(c("Tropics","Subtropics"),
+                       c("Subtropics","Temperate"),
+                       c("Tropics","Temperate"))
+
+zz %>%
   mutate(Region = factor(Region, levels = c("Tropics","Subtropics","Temperate"))) %>%
-ggplot(aes(x = factor(NumSpecies), y = Recovery_months)) +
-  geom_boxplot(outlier.colour = "white", outlier.fill = "white") +
+  filter(Perc_RecoveryDuringStudy >= 90) %>%
+  ggplot(aes(x = Region, y = recov_area_log)) +
+  scale_x_discrete(labels = num_region2) +
+  geom_boxplot(outlier.colour="white", outlier.fill = "white", outlier.shape = 1, outlier.size = 0) +
   geom_jitter(shape=1, position=position_jitter(0.2), color = "black", fill = "white", size = 2) +
-  scale_y_log10() +
-  scale_x_discrete(limits= factor(1:6)) +
-  labs(x = "Number of Species",
-       y = "Recovery Time (months)") +
+  labs(x = "Latitudinal Regions",
+       y = expression(log[10]~'['~Recovery~Rate~(m^2~month^-1)~']')) +
   theme_bw() +
   theme(axis.text.x = element_text(size = 16, color = "black"),
         axis.text.y = element_text(size = 16, color = "black"),
         axis.title = element_text(size = 16, color = "black"),
+        axis.title.x = element_text(vjust = -0.5),
         panel.grid = element_blank(),
-        panel.background = element_blank(),
-        strip.text.x = element_text(size = 16, color = "black"),
-        strip.background = element_rect(fill = "white")) +
-  facet_wrap(~Region)
-
-library(MASS)
-
-lm_testset <- dat[,c(10,23:25,29,34,37,40)]
-lm_testset <- na.omit(lm_testset)
-NROW(lm_testset)
-lm_testset$log_recov <- log10(lm_testset$Recovery_months)
-lm_testset <- subset(lm_testset, select = -c(Recovery_months)) # not appropriate to use Recovery_months as covariate for log-recovery months
-
-full.model <- lm(log_recov~., data = lm_testset)
-
-step.model <- stepAIC(full.model, direction = "backward",
-                      trace = F)
-summary(step.model)
-
-# test <- dat[dat$NumSpecies <= 3, ]
-# lm_testset_3species <- test[,c(10,25,29,34,37,40)]
-# lm_testset_3species <- na.omit(lm_testset_3species)
-# NROW(lm_testset_3species)
-# lm_testset_3species$log_recov <- log10(lm_testset_3species$Recovery_months)
-# lm_testset_3species <- subset(lm_testset_3species, select = -c(Recovery_months)) # not appropriate to use Recovery_months as covariate for log-recovery months
-# 
-# full.model_3species <- lm(log_recov~., data = na.omit(lm_testset_3species))
-# summary(full.model_3species)
-# 
-# step.model_3species <- stepAIC(full.model_3species, direction = "backward",
-#                                trace = F)
-# summary(step.model_3species)
-
-library(corrplot)
-
-dv <- subset(lm_testset_3species, select = -c(log_recov))
-testRes <- cor.mtest(dv, conf.level = 0.95)
-M <- cor(dv)
-corrplot(M, p.mat = testRes$p, method = 'circle', type = 'lower', insig='blank',
-         addCoef.col ='black', number.cex = 0.8, order = 'AOE', diag=FALSE)
-
-# round(summary(step.model)$coefficients[1],3)
-# round(summary(step.model)$coefficients[2],3)
-# round(summary(step.model)$coefficients[3],3)
-# round(summary(step.model)$coefficients[4],3)
-# round(summary(step.model)$coefficients[5],3)
-# round(summary(step.model)$coefficients[6],3)
+        panel.background = element_blank())
