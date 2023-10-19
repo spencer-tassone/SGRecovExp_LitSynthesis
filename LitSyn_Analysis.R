@@ -536,3 +536,9 @@ zz %>%
         axis.title.x = element_text(vjust = -0.5),
         panel.grid = element_blank(),
         panel.background = element_blank())
+
+zz %>%
+  group_by(Region) %>%
+  summarise(Median = round(median(recov_area, na.rm = T),2))
+
+summary(aov(recov_area~Region, zz))
