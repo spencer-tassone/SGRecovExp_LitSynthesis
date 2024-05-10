@@ -1,11 +1,8 @@
+library(tidyverse)
 library(data.table)
-library(tidyr)
-library(dplyr)
-library(ggplot2)
 library(RColorBrewer)
 library(emmeans)
 library(matrixTests)
-library(tidyverse)
 
 rm(list = ls())
 dev.off()
@@ -48,80 +45,6 @@ treatment <- dat %>%
   select(!StemDensity_Meter) %>%
   na.omit()
 
-# visually compare control site shoot density
-
-sample_dates <- unique(as.Date(control$Date, tz = 'America/Jamaica'))
-sample_dates <- format(sample_dates, '%b-%Y')
-
-control %>%
-  ggplot(aes(x = Date, y = stemdensity_control, fill = Site_no)) +
-  stat_boxplot() +
-  labs(x = "",
-       y = expression(paste("Control Site Shoot Density ( ", m^-2,")")),
-       fill = "Site Number") +
-  scale_x_discrete(labels = substr(sample_dates,1,3))+
-  scale_fill_manual(values = c("#fee0d2", "#fc9272", "#de2d26", "#deebf7", "#9ecae1", "#3182bd")) +
-  theme_bw() +
-  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
-        panel.grid = element_blank(),
-        text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"),
-        legend.title = element_text(size = 14, color = "black"),
-        legend.title.align = 1.5,
-        legend.direction = "vertical",
-        legend.margin = margin(),
-        legend.background = element_blank(),
-        legend.position = c(0.28,0.85),
-        panel.border = element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) +
-  coord_cartesian(clip = 'off', ylim = c(0, 650)) +
-  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = c(3,8.5,15), y = -130, label = c(2020,2021,2022), size = 6) +
-  annotate('rect',
-           xmin = c(5.35, 11.35),
-           xmax = c(5.65, 11.65),
-           ymin = -50, ymax = -15, fill = 'white') +
-  annotate('segment',
-           x = c(5.35, 5.65, 11.35, 11.65),
-           xend = c(5.35, 5.65, 11.35, 11.65), y = -50, yend = -20) +
-  guides(fill=guide_legend(ncol=2,byrow=F))
-
-# visually compare treatment site shoot density
-treatment %>%
-  ggplot(aes(x = Date, y = stemdensity_treatment, fill = Site_no)) +
-  stat_boxplot() +
-  labs(x = "",
-       y = expression(paste("Treatment Site Shoot Density ( ", m^-2,")")),
-       fill = "Site Number") +
-  scale_x_discrete(labels = substr(sample_dates,1,3))+
-  scale_fill_manual(values = c("#fee0d2", "#fc9272", "#de2d26", "#deebf7", "#9ecae1", "#3182bd")) +
-  theme_bw() +
-  theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
-        panel.grid = element_blank(),
-        text = element_text(size = 16),
-        axis.text.x = element_text(size = 14, color = "black", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(size = 14, color = "black"),
-        legend.title = element_text(size = 14, color = "black"),
-        legend.title.align = 0.5,
-        legend.direction = "vertical",
-        legend.margin = margin(),
-        legend.background = element_blank(),
-        legend.position = c(0.28,0.85),
-        panel.border = element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) +
-  coord_cartesian(clip = 'off', ylim = c(0, 650)) +
-  annotation_custom(grid::rectGrob(gp = grid::gpar(fill = NA))) +
-  annotate(geom = "text", x = c(3,8.5,15), y = -130, label = c(2020,2021,2022), size = 6) +
-  annotate('rect',
-           xmin = c(5.35, 11.35),
-           xmax = c(5.65, 11.65),
-           ymin = -50, ymax = -15, fill = 'white') +
-  annotate('segment',
-           x = c(5.35, 5.65, 11.35, 11.65),
-           xend = c(5.35, 5.65, 11.35, 11.65), y = -50, yend = -20) +
-  guides(fill=guide_legend(ncol=2,byrow=F))
-
 # three-way anova with interaction to check for differences in shoot density at
 # each meadow location (central vs. edge) and sampling date
 aov_control <- lm(stemdensity_control ~ Site_no * MeadowLocation * Date, data = control)
@@ -132,8 +55,12 @@ emm_control$contrasts # 3 statistically significant differences out of 108 compa
 emm_treat$contrasts # 0 statistically significant differences out of 108 comparisons
 # 18 sampling dates * 2 locations (central & edge) * 3 sites per location = 108 tests
 
-# Removal Efficiency ----
+# Treatment density differences by meadow location and date ----
+aov_test <- lm(stemdensity_treatment ~ MeadowLocation * Date, data = treatment)
+emm_test <- emmeans(aov_test, pairwise ~ MeadowLocation | Date)
+emm_test$contrasts
 
+# Removal Efficiency ----
 dat %>%
   filter(Date %in% as.Date('2020-07-15')) %>%
   select(Date,Site_no,Treatment,StemDensity_Meter) %>%
@@ -149,7 +76,6 @@ dat %>%
 # Removal efficiency at central = 93 +/- 1 and at edge = 85 +/- 6
 # Is this difference in removal efficiency statistically significant?
 # Conduct two-sample independent t-test
-
 aa <- dat %>%
   filter(Date %in% as.Date('2020-07-15')) %>%
   select(Date,Site_no,Treatment,StemDensity_Meter) %>%
@@ -162,7 +88,6 @@ aa <- dat %>%
 t.test(Frac ~ MeadowLocation, data = aa, var.equal = TRUE)
 
 # p-value = 0.08 which is greater than alpha value of 0.05, so we cannot reject the null hypothesis that there is no difference between groups
-
 bb <- dat %>%
   group_by(Date,LocTreat) %>%
   summarise(MeanStemDensity = round(mean(StemDensity_Meter, na.rm = T)),
@@ -179,20 +104,34 @@ sample_dates <- unique(bb$date)
 
 # Figure 3: timeseries of absolute shoot density ----
 ### saved as width = 800 height = 600
+# For plotting purposes, need to adjust sampling dates of Oct 2020 & Oct 2021 (difficult to see on discontinuous axis)
+bb <- bb %>%
+  mutate(Date = if_else(Date == as.Date('2020-10-14'), as.Date('2020-10-07'), Date)) %>%
+  mutate(Date = if_else(Date == as.Date('2021-10-20'), as.Date('2021-10-07'), Date))
+
 cols <- c("Central Control" = "#ca0020", "Central Treatment" = "#f48282",
           "Edge Control" = "#0571b0", "Edge Treatment" = "#92c5de")
 
 ggplot(data = bb, aes(x = factor(date), y = MeanStemDensity, color = LocTreat, group = paste(Year,LocTreat))) +
-  geom_line() +
-  geom_errorbar(ymin = bb$lower, ymax = bb$upper,
+  annotate(geom = 'rect', fill = 'gray75',
+           xmin = 13.2, xmax = 13.4, # 30 days in June so 6/30 = 0.2 and 12/30 = 0.4
+           ymin = -Inf, ymax = Inf) + # add storm event (May 6-12, 2022)
+  geom_line(aes(y = MeanStemDensity, x = as.numeric(factor(Date)) + (day(Date)-1)/ days_in_month(Date))) +
+  geom_errorbar(aes(ymin = bb$lower, ymax = bb$upper), alpha = 0) +
+  geom_errorbar(aes(ymin = bb$lower, ymax = bb$upper, x = as.numeric(factor(Date)) + (day(Date)-1)/ days_in_month(Date)),
                 color = "black", width = 0.2, alpha = 0.4) +
-  geom_point(size = 3, aes(fill = LocTreat), color = "black", shape = 21) +
+  geom_point(aes(fill = LocTreat, shape = LocTreat), alpha = 0) + # hidden, to get axis labels
+  geom_point(aes(fill = LocTreat, shape = LocTreat, x = as.numeric(factor(Date)) + (day(Date)-1)/ days_in_month(Date)),
+             size = 3, color = "black", alpha = 0.7) +
+  # geom_point(size = 3, aes(fill = LocTreat, shape = LocTreat), color = "black", alpha = 0.7) +
   scale_fill_manual(values = cols) +
   scale_color_manual(values = cols) +
+  scale_shape_manual(values = c(`Central Control` = 21, `Central Treatment` = 21,
+                                `Edge Control` = 24, `Edge Treatment` = 24)) +
   scale_x_discrete(labels = substr(sample_dates,1,3))+
   scale_y_continuous(breaks=seq(0,650,50)) +
   labs(x = "",
-       y = expression(paste("Mean (± SD) Shoot Density (ind. ", m^-2,")"))) +
+       y = expression(paste("Mean (± SD) Shoot Density (ind. ", ~ m^-2,")"))) +
   theme_bw() +
   theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
         panel.grid = element_blank(),
@@ -217,12 +156,17 @@ ggplot(data = bb, aes(x = factor(date), y = MeanStemDensity, color = LocTreat, g
            x = c(5.35, 5.65, 11.35, 11.65),
            xend = c(5.35, 5.65, 11.35, 11.65), y = -50, yend = -20)
 
-test_nt <- test[bb$LocTreat == "Edge Treatment",]
+bb %>%
+  group_by(LocTreat) %>%
+  summarise(MaxSD = max(SD)) %>%
+  filter(LocTreat == 'Edge Treatment') # +/- 107 shoots m-2
+
 y_lab <-"Edge Treatment<br>Shoot Density Standard Deviation (ind. m<sup> -2</sup>)"
-max(test_nt$SD) # +/- 107 shoots m-2
 
 # Timeseries of edge treatment site shoot standard deviation ----
-ggplot(test_nt, aes(x = Date, y = SD)) +
+bb %>%
+  filter(LocTreat %in% 'Edge Treatment') %>%
+  ggplot(aes(x = Date, y = SD)) +
   geom_point() +
   labs(x = "",
        y = y_lab) +
@@ -288,6 +232,8 @@ table1 <- dd %>%
          Year = year(Date),
          date = zoo::as.yearmon(paste(Year, Month), "%Y %m"),
          MeadowLocation = ifelse(MeadowLocation == 'Northern', 'Edge', MeadowLocation))
+
+View(table1)
 
 # Shoot density difference ----
 ### Exported as width = 1000 height = 650
@@ -367,32 +313,43 @@ northern_dummylm_model <- lm(fraction~northern_dummylm_dat$sample, data = northe
 
 # Figure 4: Relative recovery of shoot density ----
 ### saved as width = 800 height = 600
+# For plotting purposes, need to adjust sampling dates of Oct 2020 & Oct 2021 (difficult to see on discontinous axis)
+cc <- cc %>%
+  mutate(Date = if_else(Date == as.Date('2020-10-14'), as.Date('2020-10-07'), Date)) %>%
+  mutate(Date = if_else(Date == as.Date('2021-10-20'), as.Date('2021-10-07'), Date))
+
 sample_dates2 <- unique(cc$date)
 
 cc$MeadowLocation <- ifelse(cc$MeadowLocation == 'Northern','Edge',cc$MeadowLocation)
 cols2 <- c("Central" = "black", "Edge" = "white")
 
 ggplot(data = cc, aes(x = factor(date), y = fraction, group = MeadowLocation)) +
-  geom_point(aes(fill = MeadowLocation), size = 3, shape = 21, color = "black") +
-  scale_fill_manual(values = cols2) +
+  annotate(geom = 'rect', fill = 'gray75',
+           xmin = 12.2, xmax = 12.4, # 30 days in June so 6/30 = 0.2 and 12/30 = 0.4
+           ymin = -Inf, ymax = Inf) + # add storm event (May 6-12, 2022)
   geom_abline(slope = coef(central_dummylm_model)[[2]],
               intercept = coef(central_dummylm_model)[[1]],
               linetype = 'solid') +
   geom_abline(slope = coef(northern_dummylm_model)[[2]],
               intercept = coef(northern_dummylm_model)[[1]],
               linetype = 'longdash') +
+  geom_point(aes(fill = MeadowLocation), alpha = 0) + # hidden, to get axis labels
+  geom_point(aes(fill = MeadowLocation,
+                 x = as.numeric(factor(Date)) + (day(Date)-1)/ days_in_month(Date)),
+             size = 3, shape = 21, color = "black") +
+  scale_fill_manual(values = cols2) +
   geom_segment(aes(x = 1.35, xend = 2.15, y = 114.5, yend = 114.5)) +
   geom_segment(aes(x = 1.35, xend = 2.15, y = 108, yend = 108), linetype = 'dashed') +
   scale_x_discrete(labels = substr(sample_dates2,1,3))+
   scale_y_continuous(breaks=seq(0,120,20)) +
   labs(x = "",
        y = "Relative Recovery (%)") +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 90, label = central_rr_lab, parse = TRUE, size = 5) +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 82, label = central_slope_lab, parse = TRUE, size = 5) +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 74, label = central_rr100_lab, parse = TRUE, size = 5) +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 16, label = northern_rr_lab, parse = TRUE, size = 5) +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 8, label = northern_slope_lab, parse = TRUE, size = 5) +
-  ggplot2::annotate(geom = 'text', x = 7.5, y = 0, label = northern_rr100_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 90, label = central_rr_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 82, label = central_slope_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 74, label = central_rr100_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 16, label = northern_rr_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 8, label = northern_slope_lab, parse = TRUE, size = 5) +
+  annotate(geom = 'text', x = 7.5, y = 0, label = northern_rr100_lab, parse = TRUE, size = 5) +
   theme_bw() +
   theme(plot.margin = unit(c(1, 1, 2, 1), "lines"),
         panel.grid = element_blank(),
