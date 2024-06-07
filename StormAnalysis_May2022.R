@@ -1,9 +1,8 @@
+library(tidyverse)
 library(data.table)
-library(dplyr)
-library(ggplot2)
-library(lubridate)
-library(tidyr)
 library(openair)
+library(grid)
+library(gridExtra)
 
 rm(list = ls())
 dev.off()
@@ -92,7 +91,7 @@ aa$press_mb <- scales::rescale(aa$press_mb, from = c(990, 1040), to = c(0, 21))
 
 # Time series of wind gust, barometric pressure, and beaufort scale ----
 # width = 800 height = 600
-ggplot(data = aa, aes(x = datetime, y = windgust_ms)) +
+p1 <- ggplot(data = aa, aes(x = datetime, y = windgust_ms)) +
   annotate("rect",
            xmin = as.POSIXct("2022-04-20 00:00:00"),
            xmax = as.POSIXct("2022-05-18 23:00:00"),
@@ -233,7 +232,7 @@ body(windRose)[[15]] <- substitute(if (is.character(statistic)) {
   }
 })
 
-windRose(aa, ws = 'windgust_ms', wd = 'windDir_deg',
+p2 <- windRose(aa, ws = 'windgust_ms', wd = 'windDir_deg',
          breaks = c(0,1,2,3,5,8,11,14,17,21),
          cols = c('gray95','#ffffcc','#ffeda0','#fed976','#feb24c',
                   '#fd8d3c','#fc4e2a','#e31a1c','#b10026'),
@@ -244,7 +243,7 @@ windRose(aa, ws = 'windgust_ms', wd = 'windDir_deg',
          key.footer = NULL,
          offset = 5,
          angle.scale = 235,
-         fontsize = 18,
+         fontsize = 24,
          par.settings = list(axis.line = list(col = 'white')),
          key = list(labels = c("0 to 1 (Calm)",
                                "1 to 2 (Light Air)",
@@ -255,3 +254,8 @@ windRose(aa, ws = 'windgust_ms', wd = 'windDir_deg',
                                "11 to 14 (Strong Breeze)",
                                "14 to 17 (Near Gale)",
                                "17 to 21 (Gale)")))
+
+# Combine the ggplot and the Openair plot using gridExtra::grid.arrange
+openair_grob <- grid.grabExpr(print(p2), wrap.grobs = TRUE)
+
+grid.arrange(p1, openair_grob, ncol = 1)
